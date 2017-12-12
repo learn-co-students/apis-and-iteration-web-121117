@@ -1,25 +1,45 @@
 require 'rest-client'
 require 'json'
 require 'pry'
+require_relative './command_line_interface.rb'
 
-def get_character_movies_from_api(character)
-  #make the web request
-  all_characters = RestClient.get('http://www.swapi.co/api/people/')
-  character_hash = JSON.parse(all_characters)
-  
-  # iterate over the character hash to find the collection of `films` for the given
-  #   `character`
-  # collect those film API urls, make a web request to each URL to get the info
-  #  for that film
-  # return value of this method should be collection of info about each film.
-  #  i.e. an array of hashes in which each hash reps a given film
-  # this collection will be the argument given to `parse_character_movies`
-  #  and that method will do some nice presentation stuff: puts out a list
-  #  of movies by title. play around with puts out other info about a given film.
+def correct_hash(character_hash, character)
+  character_hash["results"].find do |charhash|
+    charhash["name"].downcase == character
+  end
 end
 
+def get_and_parse(url)
+  JSON.parse(RestClient.get(url))
+end
+
+def find_character_hash(character)
+  character_hash = get_and_parse('http://www.swapi.co/api/people/')
+  while correct_hash(character_hash, character) == nil
+    if character_hash["next"] == nil
+      puts "Come on. That's not a Star Wars character. Run me again."
+      abort
+    else
+      character_hash = get_and_parse(character_hash["next"])
+    end
+  end
+  correct_hash(character_hash, character)
+end
+
+
+def get_character_movies_from_api(character)
+  character_hash = find_character_hash(character)
+  character_hash["films"].collect do |movieurl|
+    get_and_parse(movieurl)
+  end
+end
+
+  # play around with puts out other info about a given film.
+
 def parse_character_movies(films_hash)
-  # some iteration magic and puts out the movies in a nice list
+  films_hash.collect do |film|
+    puts film["title"]
+  end
 end
 
 def show_character_movies(character)
